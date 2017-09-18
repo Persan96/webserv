@@ -115,30 +115,37 @@ void acceptAndRecData(int *sd, int *sd_current, struct sockaddr_in *pin, int *ad
 
 // Return NULL if there was an error else return current date as a string
 char* getDate() {
-	printf("getDate\n");
+	printf("getDate\n");	
+
 	time_t currentTime;
 	char *timeStr = NULL;
-	char *response = "Date: ";
+	char *response;
+	char *dateText = "Date: ";
 	
 	currentTime = time(NULL);
 	
 	if(currentTime != ((time_t)-1))
 		timeStr = ctime(&currentTime);
 	
-	strcat(response, timeStr);
-	strcat(response, "\n");	
+	response = calloc(strlen(dateText) + strlen(timeStr) + 1, sizeof(char));
+	strcpy(response, dateText);
+	strcat(response, timeStr);	
 
 	return response;
 }
 
 char* getFileLastModified(char *path) {
-	printf("getFileLastModified\n");	
+	printf("getFileLastModified param: %s\n", path);	
 
 	struct stat attr;
 	stat(path, &attr);
-	char *response = "Last-Modified: ";
+	char *response;
+	char *lastResponseText = "Last-Modified: ";
+	char *temp = ctime(&attr.st_mtime);
 	
-	strcat(response, ctime(&attr.st_mtime));
+	response = calloc(strlen(lastResponseText) + strlen(temp) + strlen("\n") + 1, sizeof(char));
+	strcpy(response, lastResponseText);
+	strcat(response, temp);
 	strcat(response, "\n");	
 	
 	return response;
@@ -146,39 +153,60 @@ char* getFileLastModified(char *path) {
 
 char* handleGet(char buf[BUFSIZE]) {
 	printf("HandleGet\n");	
-
+	
+	// Variables used in the response
 	char *protocol = "HTTP/1.0 ";
 	char *responseCode = "400 Bad Request\n";
 	char *time = getDate();
-	char *server = "Server: runs something\n"; /***/
-	char *lastModified = "TEMP"; /***/
-	char *eTag = "ETag: ?\n"; /***/
+	char *server = "Server: runs something\n"; //!!!!
+	char *lastModified = "TEMP"; //!!!!
+	char *eTag = "ETag: ?\n"; //!!!!
 	char *acceptRanges = "Accept-Ranges: bytes\n";
 	char *contentLength = "Content-Length: ";
 	char *connection = "Connection: close\n";
 	char *contentType = "Content-Type: text/html\n\n";
-	char *response = "";
-	char *page = "";
+        char *response;
+	
+	char *page;
+	char *pathToWWW = "../../www/";
 
 	char *token;
 	char *delimer = " ";
 
 	FILE *fp;
-	char *pathToWWW = "../../www/"; 	
+	char *pathToRequestedFile; 	
 
 	token = strtok(buf, delimer); // Remove GET
 	token = strtok(buf, delimer); // Get requested page
 	
-	strcat(pathToWWW, token);	
-	lastModified = getFileLastModified(pathToWWW);
+	pathToRequestedFile = calloc(strlen(pathToWWW) + strlen(token) + 1, sizeof(char));
+	strcpy(pathToRequestedFile, pathToWWW);
+	strcat(pathToRequestedFile, token);	
+	lastModified = getFileLastModified(pathToRequestedFile);
 	
-	fp = fopen(pathToWWW, "r");
+	printf("open file\n");
+	fp = fopen(pathToRequestedFile, "r");
 	
 	fgets(page, 255, (FILE*)fp);	
 
-	fclose(fp);
+	fclose(fp);	
 	
-	strcat(response, protocol);
+
+	printf("Put together response\n");	
+	response = calloc(	strlen(protocol) +
+				strlen(responseCode) + 
+				strlen(time) +
+				strlen(server) +
+				strlen(lastModified) +
+				strlen(eTag) +
+				strlen(acceptRanges) +
+				strlen(contentLength) +
+				strlen(connection) + 
+				strlen(contentType) +
+				1, 
+				sizeof(char));
+
+	strcpy(response, protocol);
 	strcat(response, responseCode);
 	strcat(response, time);
 	strcat(response, server);
@@ -187,9 +215,8 @@ char* handleGet(char buf[BUFSIZE]) {
 	strcat(response, acceptRanges);
 	strcat(response, contentLength);
 	strcat(response, connection);
- 	strcat(response, contentType);
-	strcat(response, page); 
-			
+	strcat(response, contentType);
+		
 	return response;
 }
 
