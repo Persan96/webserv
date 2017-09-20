@@ -117,8 +117,6 @@ void acceptAndRecData(int *sd, int *sd_current, struct sockaddr_in *pin, int *ad
 
 // Return NULL if there was an error else return current date as a string
 char* getDate() {
-	printf("getDate\n");	
-
 	time_t currentTime;
 	char *timeStr = NULL;
 	char *response;
@@ -137,11 +135,9 @@ char* getDate() {
 }
 
 char* getFileLastModified(char *path) {
-	printf("getFileLastModified param: %s\n", path);	
-
 	char *response;
 	char *lastResponseText = "Last-Modified: ";
-	char *temp = "File not found!\n";
+	char *temp = "File not found!";
 	struct stat attr;
 	if(stat(path, &attr) == 0)
 		temp = ctime(&attr.st_mtime);
@@ -154,8 +150,6 @@ char* getFileLastModified(char *path) {
 }
 
 char* handleGet(char* file) {
-	printf("HandleGet\n");	
-	printf("file: %s", file);
 	
 	// Variables used in the response
 	char *protocol = "HTTP/1.0 ";
@@ -179,16 +173,14 @@ char* handleGet(char* file) {
 
 	pathToRequestedFile = calloc(strlen(pathToWWW) + strlen(file) + 1, sizeof(char));
 	strcpy(pathToRequestedFile, pathToWWW);
-	strcat(pathToRequestedFile, file);	
+	strcat(pathToRequestedFile, file);
+	
 	lastModified = getFileLastModified(pathToRequestedFile);
-	printf("lastMod: %s\n", lastModified);
 	
 	printf("open file in path: %s\n", pathToRequestedFile);
 	fp = fopen(pathToRequestedFile, "r");
 	
-	
 	if(fp != NULL) {
-		printf("File open\n");
 		fseek(fp, 0, SEEK_END);
 		fileSize = ftell(fp);
 		
@@ -198,13 +190,9 @@ char* handleGet(char* file) {
 		fread(page, fileSize, 1, fp);
 		page[fileSize] = '\0';
 
-		printf("Page: %s", page);
-		
 		fclose(fp);
 	}
 	
-
-	printf("Put together response\n");	
 	response = calloc(	strlen(protocol) +
 				strlen(responseCode) + 
 				strlen(time) +
@@ -215,6 +203,8 @@ char* handleGet(char* file) {
 				strlen(contentLength) +
 				strlen(connection) + 
 				strlen(contentType) +
+				strlen("\n") +
+				strlen(page) +
 				1, 
 				sizeof(char));
 
@@ -228,14 +218,13 @@ char* handleGet(char* file) {
 	strcat(response, contentLength);
 	strcat(response, connection);
 	strcat(response, contentType);
+	strcat(response, "\n");
+	strcat(response, page);
 		
 	return response;
 }
 
 char* handleBuf(char buf[BUFSIZE]) {
-	
-	printf("Handle buf: %s", buf);
-
 	char *token;
 	char *temp = strdup(buf);
 	const char *delim = " \0";
@@ -249,24 +238,20 @@ char* handleBuf(char buf[BUFSIZE]) {
 		// WIP
 		// Implement function handling head and return response code
 		if(strcmp(token, "HEAD") == 0) {
-			printf("Head\n");
 			response = "HEAD\n"; 
 		}
 		// WIP
 		// Implement function handling get and return response code
 		else if(strcmp(token, "GET") == 0) {
-			printf("GET\n");
-			token = strtok(NULL, delim); 
+			token = strtok(NULL, delim);
+			token[strlen(token) - 2] = '\0';
 			response = handleGet(token);
-			printf("%s\n", response);
 		}
 		else {
-			printf("ERROR 501\n");
 			response = "ERROR 501\n";
 		}
 	}
 	else{
-		printf("ERROR 400 %s\n", token);
 		response = "ERROR 400\n";
 	}
 
