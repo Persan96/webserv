@@ -177,8 +177,10 @@ char* handleGet(char buf[BUFSIZE]) {
 	char *pathToRequestedFile; 	
 
 	token = strtok(buf, delimer); // Remove GET
-	token = strtok(buf, delimer); // Get requested page
+	token = strtok(NULL, delimer); // Get requested page
 	
+	printf("Second token: %d\n", token); // Checker for token
+
 	pathToRequestedFile = calloc(strlen(pathToWWW) + strlen(token) + 1, sizeof(char));
 	strcpy(pathToRequestedFile, pathToWWW);
 	strcat(pathToRequestedFile, token);	
@@ -273,7 +275,7 @@ int main(int argc, char* argv[]) {
 	
 	setUp(&sd, port, &sin);		
 	
-
+	// Figure out where to fork what, suggestion, fork in start of while
 	while(1) {
 		for(int i = 0; i < BUFSIZE; i++) {
 			buf[i] = '\0';
