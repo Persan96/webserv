@@ -17,7 +17,7 @@
 #define MAX_PORTS 65535
 #define BACKLOG 10
 
-void parameterHandling(int nrOfArgs, int* port, char* args[]) {
+void parameterHandling(int nrOfArgs, int* port, char* args[]) { // Function to handle input parameters
 	
 	char *invalidUsage = "Invalid usage!\n";
 	char *usage = "USAGE: webserver [-h|-p N]\n-h for help\n-p N for setting the port the webserver should listen to\n";
@@ -59,7 +59,7 @@ void parameterHandling(int nrOfArgs, int* port, char* args[]) {
 	}
 }
 
-void setUp(int *sd, const int port, struct sockaddr_in *sin) {
+void setUp(int *sd, const int port, struct sockaddr_in *sin) { // Function to set up sockets
 	// Fix socket
 	// sd = socket descriptor
 	// socket(DOMAIN, TYPE, PROTOCOL)
@@ -90,7 +90,7 @@ void setUp(int *sd, const int port, struct sockaddr_in *sin) {
 	}
 }
 
-void acceptAndRecData(int *sd, int *sd_current, struct sockaddr_in *pin, int *addrlen, char buf[BUFSIZE]) {
+void acceptAndRecData(int *sd, int *sd_current, struct sockaddr_in *pin, int *addrlen, char buf[BUFSIZE]) { // Function to accept and recieve data
 	// Wait for client to send us an request
 	// Get new socket file descriptor to use for this single connection
 	// pin = space where information about where the connection is comming from
@@ -116,40 +116,40 @@ void acceptAndRecData(int *sd, int *sd_current, struct sockaddr_in *pin, int *ad
 }
 
 // Return NULL if there was an error else return current date as a string
-char* getDate() {
+char* getDate() { // Function to return date
 	time_t currentTime;
 	char *timeStr = NULL;
 	char *response;
 	char *dateText = "Date: ";
 	
-	currentTime = time(NULL);
+	currentTime = time(NULL); // Set time to NULL, in case of time not found
 	
 	if(currentTime != ((time_t)-1))
-		timeStr = ctime(&currentTime);
+		timeStr = ctime(&currentTime); // ***
 	
-	response = calloc(strlen(dateText) + strlen(timeStr) + 1, sizeof(char));
-	strcpy(response, dateText);
+	response = calloc(strlen(dateText) + strlen(timeStr) + 1, sizeof(char)); // Make space in memory for response
+	strcpy(response, dateText); // Set date and time in response string
 	strcat(response, timeStr);	
 
 	return response;
 }
 
-char* getFileLastModified(char *path) {
+char* getFileLastModified(char *path) { // Function to return last date and time for file modified
 	char *response;
 	char *lastResponseText = "Last-Modified: ";
 	char *temp = "File not found!";
 	struct stat attr;
-	if(stat(path, &attr) == 0)
+	if(stat(path, &attr) == 0) // ***
 		temp = ctime(&attr.st_mtime);
 	
-	response = calloc(strlen(lastResponseText) + strlen(temp) + 1, sizeof(char));
-	strcpy(response, lastResponseText);
+	response = calloc(strlen(lastResponseText) + strlen(temp) + 1, sizeof(char)); // Make space in memory for response
+	strcpy(response, lastResponseText); // Set two char arrays into one char array.
 	strcat(response, temp);	
 	
 	return response;
 }
 
-char* handleGet(char* file) {
+char* handleGet(char* file) { // Function to handle GET command.
 	
 	// Variables used in the response
 	char *protocol = "HTTP/1.0 ";
@@ -171,26 +171,26 @@ char* handleGet(char* file) {
 	size_t fileSize = 0;
 	char *pathToRequestedFile;
 
-	pathToRequestedFile = calloc(strlen(pathToWWW) + strlen(file) + 1, sizeof(char));
-	strcpy(pathToRequestedFile, pathToWWW);
+	pathToRequestedFile = calloc(strlen(pathToWWW) + strlen(file) + 1, sizeof(char)); // Make space in memory for file path string
+	strcpy(pathToRequestedFile, pathToWWW); // Set two char arrays into one, filepath+filename
 	strcat(pathToRequestedFile, file);
 	
-	lastModified = getFileLastModified(pathToRequestedFile);
+	lastModified = getFileLastModified(pathToRequestedFile); // Set value for last modified with function
 	
 	printf("open file in path: %s\n", pathToRequestedFile);
-	fp = fopen(pathToRequestedFile, "r");
+	fp = fopen(pathToRequestedFile, "r"); // Open file from recieved path and filename string
 	
-	if(fp != NULL) {
+	if(fp != NULL) { // If the file exists and could be open, continue 
 		fseek(fp, 0, SEEK_END);
-		fileSize = ftell(fp);
+		fileSize = ftell(fp); // Set filesize to size of opened file
 		
 		rewind(fp);
-		page = calloc(fileSize + 1, sizeof(char));
+		page = calloc(fileSize + 1, sizeof(char)); // Allocate space in memory for file
 		
-		fread(page, fileSize, 1, fp);
+		fread(page, fileSize, 1, fp); // Set variable page to opened files content data
 		page[fileSize] = '\0';
 
-		fclose(fp);
+		fclose(fp); // Close opened file
 	}
 	
 	response = calloc(	strlen(protocol) +
@@ -206,7 +206,7 @@ char* handleGet(char* file) {
 				strlen("\n") +
 				strlen(page) +
 				1, 
-				sizeof(char));
+				sizeof(char)); // Allocate space in memory for a response to send back
 
 	strcpy(response, protocol);
 	strcat(response, responseCode);
@@ -219,19 +219,18 @@ char* handleGet(char* file) {
 	strcat(response, connection);
 	strcat(response, contentType);
 	strcat(response, "\n");
-	strcat(response, page);
+	strcat(response, page); // Set all different parts of the response to one char array
 		
 	return response;
 }
 
-char* handleBuf(char buf[BUFSIZE]) {
+char* handleBuf(char buf[BUFSIZE]) { // Function to handle recieved data
+	// Variables used 
 	char *token;
 	char *temp = strdup(buf);
 	const char *delim = " \0";
 	token = strtok(temp, delim);
 	
-	//printf("TokeN: %d\n", *token);
-
 	char *response;
 	
 	if(token != NULL && *token != '\r') {
@@ -243,23 +242,23 @@ char* handleBuf(char buf[BUFSIZE]) {
 		// WIP
 		// Implement function handling get and return response code
 		else if(strcmp(token, "GET") == 0) {
-			token = strtok(NULL, delim);
-			token[strlen(token) - 2] = '\0';
-			response = handleGet(token);
+			token = strtok(NULL, delim); // Set token to next part of char array, filename
+			token[strlen(token) - 2] = '\0'; // Remove junk from char array
+			response = handleGet(token); // Call handleget and set the response to var response
 		}
 		else {
-			response = "ERROR 501\n";
+			response = "ERROR 501\n"; // If command not implemented, return error 501
 		}
 	}
 	else{
-		response = "ERROR 400\n";
+		response = "ERROR 400\n"; // If something else went wrong, return error 400
 	}
 
 	return response;
 }
 
 int main(int argc, char* argv[]) {
-	
+	// Variables used
 	int port = 0;
 	struct sockaddr_in sin, pin;
 	int sd, sd_current;
@@ -267,28 +266,28 @@ int main(int argc, char* argv[]) {
 	char buf[BUFSIZE];
 	char *response = "No response";
 	
-	parameterHandling(argc, &port, argv);
+	parameterHandling(argc, &port, argv); // Call function to handle parameters entered when starting the webserver
 
-	printf("Listening to port: %d\n", port);
+	printf("Listening to port: %d\n", port); // Showing what port has been set to listen to
 	
-	setUp(&sd, port, &sin);		
+	setUp(&sd, port, &sin);	// Set up the socket to listen for requests
 	
 	// Figure out where to fork what, suggestion, fork in start of while
 	while(1) {
-		for(int i = 0; i < BUFSIZE; i++) {
+		for(int i = 0; i < BUFSIZE; i++) { // Remove junk from buffer
 			buf[i] = '\0';
 		}				
-		acceptAndRecData(&sd, &sd_current, &pin, &addrlen, buf);
-		response = handleBuf(buf);
+		acceptAndRecData(&sd, &sd_current, &pin, &addrlen, buf); // Call function to handle recieved data
+		response = handleBuf(buf); // Call function to handle a response
 	
 		// Send a response to the client
-		if(send(sd_current, response, strlen(response) + 1, 0) == -1) {
+		if(send(sd_current, response, strlen(response) + 1, 0) == -1) { // Send a response to client, if it does not work, show error.
 			perror("send");
 			exit(-1);
 		}
 	
 		// Close current socket
-		close(sd_current);
+		close(sd_current); // Close current socket
 	}	
 	
 	// Close socket
