@@ -1,6 +1,7 @@
 
 #include<stdio.h>
 #include<stdlib.h>
+#include<stddef.h>
 #include<sys/socket.h>
 #include<sys/types.h>
 #include<sys/stat.h>
@@ -9,6 +10,7 @@
 #include<arpa/inet.h>
 #include<unistd.h>
 #include<time.h>
+
 
 #define DEFAULT_PORT 80
 #define BUFSIZE 512
@@ -137,22 +139,23 @@ char* getDate() {
 char* getFileLastModified(char *path) {
 	printf("getFileLastModified param: %s\n", path);	
 
-	struct stat attr;
-	stat(path, &attr);
 	char *response;
 	char *lastResponseText = "Last-Modified: ";
-	char *temp = ctime(&attr.st_mtime);
+	char *temp = "File not found!\n";
+	struct stat attr;
+	if(stat(path, &attr) == 0)
+		temp = ctime(&attr.st_mtime);
 	
-	response = calloc(strlen(lastResponseText) + strlen(temp) + strlen("\n") + 1, sizeof(char));
+	response = calloc(strlen(lastResponseText) + strlen(temp) + 1, sizeof(char));
 	strcpy(response, lastResponseText);
-	strcat(response, temp);
-	strcat(response, "\n");	
+	strcat(response, temp);	
 	
 	return response;
 }
 
-char* handleGet(char buf[BUFSIZE]) {
+char* handleGet(char* file) {
 	printf("HandleGet\n");	
+	printf("file: %s", file);
 	
 	// Variables used in the response
 	char *protocol = "HTTP/1.0 ";
@@ -170,28 +173,35 @@ char* handleGet(char buf[BUFSIZE]) {
 	char *page;
 	char *pathToWWW = "../../www/";
 
-	char *token;
-	char *delimer = " ";
-
 	FILE *fp;
-	char *pathToRequestedFile; 	
+	size_t fileSize = 0;
+	char *pathToRequestedFile;
 
-	token = strtok(buf, delimer); // Remove GET
-	token = strtok(NULL, delimer); // Get requested page
-	
-	printf("Second token: %d\n", token); // Checker for token
-
-	pathToRequestedFile = calloc(strlen(pathToWWW) + strlen(token) + 1, sizeof(char));
+	pathToRequestedFile = calloc(strlen(pathToWWW) + strlen(file) + 1, sizeof(char));
 	strcpy(pathToRequestedFile, pathToWWW);
-	strcat(pathToRequestedFile, token);	
+	strcat(pathToRequestedFile, file);	
 	lastModified = getFileLastModified(pathToRequestedFile);
+	printf("lastMod: %s\n", lastModified);
 	
-	printf("open file\n");
+	printf("open file in path: %s\n", pathToRequestedFile);
 	fp = fopen(pathToRequestedFile, "r");
 	
-	fgets(page, 255, (FILE*)fp);	
+	
+	if(fp != NULL) {
+		printf("File open\n");
+		fseek(fp, 0, SEEK_END);
+		fileSize = ftell(fp);
+		
+		rewind(fp);
+		page = calloc(fileSize + 1, sizeof(char));
+		
+		fread(page, fileSize, 1, fp);
+		page[fileSize] = '\0';
 
-	fclose(fp);	
+		printf("Page: %s", page);
+		
+		fclose(fp);
+	}
 	
 
 	printf("Put together response\n");	
@@ -227,7 +237,9 @@ char* handleBuf(char buf[BUFSIZE]) {
 	printf("Handle buf: %s", buf);
 
 	char *token;
-	token = strtok(buf, " \0");
+	char *temp = strdup(buf);
+	const char *delim = " \0";
+	token = strtok(temp, delim);
 	
 	//printf("TokeN: %d\n", *token);
 
@@ -244,7 +256,8 @@ char* handleBuf(char buf[BUFSIZE]) {
 		// Implement function handling get and return response code
 		else if(strcmp(token, "GET") == 0) {
 			printf("GET\n");
-			response = handleGet(buf);
+			token = strtok(NULL, delim); 
+			response = handleGet(token);
 			printf("%s\n", response);
 		}
 		else {
