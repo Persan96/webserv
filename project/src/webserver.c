@@ -167,20 +167,29 @@ char* handleGet(char* file) { // Function to handle GET command.
 	char *page;
 	char *pathToWWW = "../../www/";
 
-	FILE *fp;
+	FILE *fp = NULL;
 	size_t fileSize = 0;
 	char *pathToRequestedFile;
+	char *fileName = file;
 
-	pathToRequestedFile = calloc(strlen(pathToWWW) + strlen(file) + 1, sizeof(char)); // Make space in memory for file path string
+	if(strcmp(fileName, "/")==0)
+		fileName = "index.html";
+	else if(fileName[0] = '/')
+		fileName++;
+
+	pathToRequestedFile = calloc(strlen(pathToWWW) + strlen(fileName) + 1, sizeof(char)); // Make space in memory for file path string
 	strcpy(pathToRequestedFile, pathToWWW); // Set two char arrays into one, filepath+filename
-	strcat(pathToRequestedFile, file);
+	strcat(pathToRequestedFile, fileName);
 	
 	lastModified = getFileLastModified(pathToRequestedFile); // Set value for last modified with function
 	
 	printf("open file in path: %s\n", pathToRequestedFile);
 	fp = fopen(pathToRequestedFile, "r"); // Open file from recieved path and filename string
 	
-	if(fp != NULL) { // If the file exists and could be open, continue 
+	if(fp == NULL)  // If the file exists and could be open, continue 
+		fp = fopen("../../www/error404.html", "r");	
+		
+	if(fp != NULL) {
 		fseek(fp, 0, SEEK_END);
 		fileSize = ftell(fp); // Set filesize to size of opened file
 		
@@ -192,7 +201,9 @@ char* handleGet(char* file) { // Function to handle GET command.
 
 		fclose(fp); // Close opened file
 	}
-	
+	else
+		page = "nope.\n";
+
 	response = calloc(	strlen(protocol) +
 				strlen(responseCode) + 
 				strlen(time) +
@@ -243,7 +254,7 @@ char* handleBuf(char buf[BUFSIZE]) { // Function to handle recieved data
 		// Implement function handling get and return response code
 		else if(strcmp(token, "GET") == 0) {
 			token = strtok(NULL, delim); // Set token to next part of char array, filename
-			token[strlen(token) - 2] = '\0'; // Remove junk from char array
+			//token[strlen(token) - 2] = '\0'; // Remove junk from char array
 			response = handleGet(token); // Call handleget and set the response to var response
 		}
 		else {
