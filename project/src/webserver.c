@@ -10,7 +10,7 @@
 #include<arpa/inet.h>
 #include<unistd.h>
 #include<time.h>
-
+#include<limits.h>
 
 #define DEFAULT_PORT 80
 #define BUFSIZE 512
@@ -170,25 +170,29 @@ char* handleGet(char* file) { // Function to handle GET command.
 	FILE *fp = NULL;
 	size_t fileSize = 0;
 	char *pathToRequestedFile;
-	char *fileName = file;
+	char *fileName = calloc(15, sizeof(char));
+	
+	realpath(file, fileName); // Check for .. or .
 
 	if(strcmp(fileName, "/")==0)
 		fileName = "index.html";
 	else if(fileName[0] = '/')
 		fileName++;
 
+
 	pathToRequestedFile = calloc(strlen(pathToWWW) + strlen(fileName) + 1, sizeof(char)); // Make space in memory for file path string
 	strcpy(pathToRequestedFile, pathToWWW); // Set two char arrays into one, filepath+filename
 	strcat(pathToRequestedFile, fileName);
-	
-	lastModified = getFileLastModified(pathToRequestedFile); // Set value for last modified with function
 	
 	printf("open file in path: %s\n", pathToRequestedFile);
 	fp = fopen(pathToRequestedFile, "r"); // Open file from recieved path and filename string
 	
 	if(fp == NULL)  // If the file exists and could be open, continue 
 		fp = fopen("../../www/error404.html", "r");	
-		
+	
+	if(fp == NULL)  // If the file exists and could be open, continue 
+		fp = fopen("../../www/error500.html", "r");	
+
 	if(fp != NULL) {
 		fseek(fp, 0, SEEK_END);
 		fileSize = ftell(fp); // Set filesize to size of opened file
@@ -202,7 +206,9 @@ char* handleGet(char* file) { // Function to handle GET command.
 		fclose(fp); // Close opened file
 	}
 	else
-		page = "nope.\n";
+		page = "<html><head>Internal server error 500</head><body><h1>Internal server error 500</h1></body></html>";
+
+	lastModified = getFileLastModified(pathToRequestedFile); // Set value for last modified with function
 
 	response = calloc(	strlen(protocol) +
 				strlen(responseCode) + 
