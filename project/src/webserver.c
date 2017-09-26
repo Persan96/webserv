@@ -137,7 +137,7 @@ char* getDate() { // Function to return date
 char* getFileLastModified(char *path) { // Function to return last date and time for file modified
 	char *response;
 	char *lastResponseText = "Last-Modified: ";
-	char *temp = "File not found!";
+	char *temp = "File not found!\n";
 	struct stat attr;
 	if(stat(path, &attr) == 0) // ***
 		temp = ctime(&attr.st_mtime);
@@ -153,15 +153,16 @@ char* handleGet(char* file) { // Function to handle GET command.
 	
 	// Variables used in the response
 	char *protocol = "HTTP/1.0 ";
-	char *responseCode = "400 Bad Request\n";
+	char *responseCode = "200 OK\n";
 	char *time = getDate();
 	char *server = "Server: runs something\n"; //!!!!
 	char *lastModified = "TEMP"; //!!!!
-	char *eTag = "ETag: ?\n"; //!!!!
+	char *eTag = "ETag: rand12345num\n"; //!!!!
 	char *acceptRanges = "Accept-Ranges: bytes\n";
-	char *contentLength = "Content-Length: ";
+	char *contentLengthStart = "Content-Length: %d\n";
+	char *contentLength;
 	char *connection = "Connection: close\n";
-	char *contentType = "Content-Type: text/html\n\n";
+	char *contentType = "Content-Type: text/html\n";
         char *response;
 	
 	char *page;
@@ -187,11 +188,15 @@ char* handleGet(char* file) { // Function to handle GET command.
 	printf("open file in path: %s\n", pathToRequestedFile);
 	fp = fopen(pathToRequestedFile, "r"); // Open file from recieved path and filename string
 	
-	if(fp == NULL)  // If the file exists and could be open, continue 
-		fp = fopen("../../www/error404.html", "r");	
-	
-	if(fp == NULL)  // If the file exists and could be open, continue 
-		fp = fopen("../../www/error500.html", "r");	
+	if(fp == NULL) { 
+		fp = fopen("../www/error404.html", "r");	
+		responseCode = "404 Not Found\n";
+	}
+
+	if(fp == NULL) { 
+		fp = fopen("../www/error500.html", "r");	
+		responseCode = "500 Internal Server Error\n";
+	}
 
 	if(fp != NULL) {
 		fseek(fp, 0, SEEK_END);
@@ -205,10 +210,17 @@ char* handleGet(char* file) { // Function to handle GET command.
 
 		fclose(fp); // Close opened file
 	}
-	else
+	else {
 		page = "<html><head>Internal server error 500</head><body><h1>Internal server error 500</h1></body></html>";
+		responseCode = "500 Internal Server Error\n";
+	}
 
 	lastModified = getFileLastModified(pathToRequestedFile); // Set value for last modified with function
+	int pageSize = strlen(page);
+	contentLength = calloc(strlen(contentLengthStart) + sizeof(pageSize) + 1, sizeof(char));
+	//strcpy(contentLength, contentLengthStart);
+	//strcat(contentLength, 
+	sprintf(contentLength, contentLengthStart, pageSize);
 
 	response = calloc(	strlen(protocol) +
 				strlen(responseCode) + 
@@ -275,6 +287,8 @@ char* handleBuf(char buf[BUFSIZE]) { // Function to handle recieved data
 	else{
 		response = "ERROR 400\n"; // If something else went wrong, return error 400
 	}
+	
+	printf("Response message:\n%s\n", response);
 
 	return response;
 }

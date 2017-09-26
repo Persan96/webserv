@@ -25,9 +25,9 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(FLAGS) -c $< -o $@
 
 install:
-	mkdir include
-	mkdir objects
-	mkdir src
+	mkdir -d include
+	mkdir -d objects
+	mkdir -d src
 
 clean:
 	$(RM) $(PROG) $(OBJS)
