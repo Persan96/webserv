@@ -230,19 +230,45 @@ char* handleRequest(char *requestType, char* file) { // Function to handle GET c
 	// VARS FOR HEAD COMMAND
 	char *delimPage = "<>";
 	char *head;
+	char *beginHeadPage = "<html><head>";
+	char *endHeadPage = "</head></html>";
 	char *headPage = strtok(page, delimPage);
-	int headFound = 0;
+	int headFound1 = 0; // For starting to inject head
+	int headFound2 = 0; // For exiting head
 
-	while(headFound == 0){
-		head = strtok(NULL, delimPage);
-		if(strcmp(head, "head") == 0 || strcmp(head, "HEAD") == 0){
-			head = strtok(NULL, delimPage);
-			headFound = 1;
-		}
-		else if(strcmp(head, NULL) == 0)
-			headFound = -1;
+	// MAKE THE HEAD-VAR TO RECIEVE HEAD
+	head = calloc(strlen(page) + 1); // Make room for head
+	strcpy(head, beginHeadPage); // Insert start of header
+
+	// Iterate through the headfile AND FILL IT UP
+	while(headFound1 == 0){
+		if(strcmp(headPage, "head") == 0 || strcmp(headPage, "HEAD") == 0) // If head-token found, next token is head content
+			headFound1 = 1; // Exit while-loop
+		
+		headPage = strtok(NULL, delimPage); // Move on to next token
+
+		if(strcmp(headPage, NULL) == 0){
+			head = "<html><head>No head file found</html></head>";
+			headFound1 = -1;
+			headFound2 = -1;
+			}	
 	}
+	while(headFound2 == 0){
+		strcat(head, strtok(NULL, delimPage); // Add head-content to head
+
+		headPage = strtok(NULL, delimPage); // Move on to next token
+		
+		if(strcmp(headPage, "head") == 0 || strcmp(headPage, "HEAD") == 0) // If head-token found, head content has ended.
+			headFound2 = 1; // Exit while-loop
 	
+		if(strcmp(headPage, NULL) == 0){
+			head = "<html><head>No head file found</html></head>";
+			headFound2 = -1;
+			}
+	}
+
+	// WHEN LOOPS ARE DONE, HEAD SHOULD BE FULL.
+
 	lastModified = getFileLastModified(pathToRequestedFile); // Set value for last modified with function
 	
 	int pageSize = strlen(page);
