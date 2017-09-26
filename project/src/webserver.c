@@ -235,7 +235,7 @@ char* handleRequest(char *requestType, char* file) { // Function to handle GET c
 
 	while(headFound == 0){
 		head = strtok(NULL, delimPage);
-		if(strcmp(head, "header") == 0 || strcmp(head, "HEADER") == 0){
+		if(strcmp(head, "head") == 0 || strcmp(head, "HEAD") == 0){
 			head = strtok(NULL, delimPage);
 			headFound = 1;
 		}
