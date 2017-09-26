@@ -255,16 +255,15 @@ char* handleRequest(char *requestType, char* file) { // Function to handle GET c
 	}
 	while(headFound2 == 0){
 		headPage = strtok(NULL, delimPage); // Move on to next token
-
-		strcat(head, headPage); // Add head-content to head
 		
 		if(strcmp(headPage, "head") == 0 || strcmp(headPage, "HEAD") == 0) // If head-token found, head content has ended.
 			headFound2 = 1; // Exit while-loop
-	
-		if(strcmp(headPage, NULL) == 0){ // If no head found, exit
+		else if(strcmp(headPage, NULL) == 0){ // If no head found, exit
 			head = "<html><head>No head file found</html></head>";
 			headFound2 = -1;
 			}
+		else
+			strcat(head, headPage); // Add head-content to head
 	}
 
 	// WHEN LOOPS ARE DONE, HEAD SHOULD BE FULL.
