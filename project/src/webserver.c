@@ -227,10 +227,22 @@ char* handleRequest(char *requestType, char* file) { // Function to handle GET c
 		responseCode = "500 Internal Server Error\n";
 	}
 
-	if(strcmp(requestType, "HEAD") == 0) {
-		
-	}	
+	// VARS FOR HEAD COMMAND
+	char *delimPage = "<>";
+	char *head;
+	char *headPage = strtok(page, delimPage);
+	int headFound = 0;
 
+	while(headFound == 0){
+		head = strtok(NULL, delimPage);
+		if(strcmp(head, "header") == 0 || strcmp(head, "HEADER") == 0){
+			head = strtok(NULL, delimPage);
+			headFound = 1;
+		}
+		else if(strcmp(head, NULL) == 0)
+			headFound = -1;
+	}
+	
 	lastModified = getFileLastModified(pathToRequestedFile); // Set value for last modified with function
 	
 	int pageSize = strlen(page);
@@ -309,18 +321,6 @@ int main(int argc, char* argv[]) {
 		if(acceptAndRecData(&sd, &sd_current, &pin, &addrlen, buf)) {
 			pid = fork();
 		}
-
-		//response = handleBuf(buf); // Call function to handle a response
-	
-		// Send a response to the client
-		//if(send(sd_current, response, strlen(response) + 1, 0) == -1) { // Send a response to client, if it does not work, show error.
-		//	perror("send");
-		//	exit(-1);
-		//}
-	
-		// Close current socket
-		//close(sd_current); // Close current socket
-		
 	}	
 	
 	response = handleBuf(buf); // Call function to handle a response
@@ -333,10 +333,6 @@ int main(int argc, char* argv[]) {
 	
 	// Close current socket
 	close(sd_current); // Close current socket
-
-
-	// Close socket
-	//close(sd);
 	
 	exit(0);
 }
