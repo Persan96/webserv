@@ -112,7 +112,7 @@ void acceptAndRecData(int *sd, int *sd_current, struct sockaddr_in *pin, int *ad
 
 	// Show info about the client
 	printf("Request from %s:%i\n", inet_ntoa((*pin).sin_addr), ntohs((*pin).sin_port));
-	printf("Accept and Recive data: %s", buf);
+	printf("Request: %s", buf);
 }
 
 // Return NULL if there was an error else return current date as a string
@@ -165,12 +165,12 @@ char* handleGet(char* file) { // Function to handle GET command.
         char *response;
 	
 	char *page;
-	char *pathToWWW = "../../www/";
+	char *pathToWWW = "../www/";
 
 	FILE *fp = NULL;
 	size_t fileSize = 0;
 	char *pathToRequestedFile;
-	char *fileName = calloc(15, sizeof(char));
+	char *fileName = calloc(strlen(file), sizeof(char));
 	
 	realpath(file, fileName); // Check for .. or .
 
@@ -244,7 +244,11 @@ char* handleGet(char* file) { // Function to handle GET command.
 char* handleBuf(char buf[BUFSIZE]) { // Function to handle recieved data
 	// Variables used 
 	char *token;
-	char *temp = strdup(buf);
+	
+	//char *temp = strdup(buf);
+	char *temp = calloc(strlen(buf) + 1, sizeof(char));
+	strcpy(temp, buf);
+	
 	const char *delim = " \0";
 	token = strtok(temp, delim);
 	
@@ -261,6 +265,7 @@ char* handleBuf(char buf[BUFSIZE]) { // Function to handle recieved data
 		else if(strcmp(token, "GET") == 0) {
 			token = strtok(NULL, delim); // Set token to next part of char array, filename
 			//token[strlen(token) - 2] = '\0'; // Remove junk from char array
+			
 			response = handleGet(token); // Call handleget and set the response to var response
 		}
 		else {
