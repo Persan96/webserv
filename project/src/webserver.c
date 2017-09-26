@@ -5,12 +5,14 @@
 #include<sys/socket.h>
 #include<sys/types.h>
 #include<sys/stat.h>
+#include<sys/wait.h>
 #include<string.h>
 #include<netinet/in.h>
 #include<arpa/inet.h>
 #include<unistd.h>
 #include<time.h>
 #include<limits.h>
+#include<signal.h>
 
 #define DEFAULT_PORT 80
 #define BUFSIZE 512
@@ -223,7 +225,7 @@ char* handleRequest(char *requestType, char* file) { // Function to handle GET c
 		fclose(fp); // Close opened file
 	}
 	else {
-		page = "<html><head>Internal server error 500</head><body><h1>Internal server error 500</h1></body></html>";
+		page = "<html><head>Internal server head error 500</head><body><h1>Internal server error 500</h1></body></html>";
 		responseCode = "500 Internal Server Error\n";
 	}
 
@@ -292,6 +294,14 @@ int main(int argc, char* argv[]) {
 	char buf[BUFSIZE];
 	char *response = "No response";
 	int pid = getpid();	
+	int status;
+
+	
+/*	struct sigaction sigchld_action = {
+		.sa_handler = SIG_DFL,
+		.sa_flags = SA_NOCLDWAIT
+	};
+	sigaction(SIGCHLD, &sigchld_action, NULL);*/
 
 	parameterHandling(argc, &port, argv); // Call function to handle parameters entered when starting the webserver
 
@@ -309,34 +319,45 @@ int main(int argc, char* argv[]) {
 		if(acceptAndRecData(&sd, &sd_current, &pin, &addrlen, buf)) {
 			pid = fork();
 		}
-
-		//response = handleBuf(buf); // Call function to handle a response
-	
-		// Send a response to the client
-		//if(send(sd_current, response, strlen(response) + 1, 0) == -1) { // Send a response to client, if it does not work, show error.
-		//	perror("send");
-		//	exit(-1);
-		//}
-	
-		// Close current socket
-		//close(sd_current); // Close current socket
 		
-	}	
+		if(pid == 0) {
+			if(!fork()) {
+				close(sd);
+				printf("pid: %d\n", getpid());
+				response = handleBuf(buf); // Call function to handle a response
 	
-	response = handleBuf(buf); // Call function to handle a response
-	
-	// Send a response to the client
-	if(send(sd_current, response, strlen(response) + 1, 0) == -1) { // Send a response to client, if it does not work, show error.
-		perror("send");
-		exit(-1);
+				// Send a response to the client
+				if(send(sd_current, response, strlen(response) + 1, 0) == -1) { // Send a response to client, if it does not work, show error.
+					perror("send");
+					exit(-1);
+				}
+				
+				close(sd_current);
+			}
+			else
+				exit(0);
+		}
+		else	
+			waitpid(pid, &status, 0);	
 	}
-	
-	// Close current socket
-	close(sd_current); // Close current socket
+	/*
+	if(pid == 0) {
+		if(!fork()) {
+			close(sd);
 
-
-	// Close socket
-	//close(sd);
+			response = handleBuf(buf); // Call function to handle a response
 	
-	exit(0);
+			// Send a response to the client
+			if(send(sd_current, response, strlen(response) + 1, 0) == -1) { // Send a response to client, if it does not work, show error.
+				perror("send");
+				exit(-1);
+			}
+				
+			close(sd_current);
+		}
+		else
+			exit(0);
+	}*/
+			
+	exit(0);	
 }
