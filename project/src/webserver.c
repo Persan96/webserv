@@ -229,10 +229,7 @@ char* handleRequest(char *requestType, char* file) { // Function to handle GET c
 		responseCode = "500 Internal Server Error\n";
 	}
 
-	if(strcmp(requestType, "HEAD") == 0) {
 		
-	}	
-
 	lastModified = getFileLastModified(pathToRequestedFile); // Set value for last modified with function
 	
 	int pageSize = strlen(page);
@@ -296,12 +293,6 @@ int main(int argc, char* argv[]) {
 	int pid = getpid();	
 	int status;
 
-	
-/*	struct sigaction sigchld_action = {
-		.sa_handler = SIG_DFL,
-		.sa_flags = SA_NOCLDWAIT
-	};
-	sigaction(SIGCHLD, &sigchld_action, NULL);*/
 
 	parameterHandling(argc, &port, argv); // Call function to handle parameters entered when starting the webserver
 
@@ -315,49 +306,34 @@ int main(int argc, char* argv[]) {
 
 	// Figure out where to fork what, suggestion, fork in start of while
 	while(pid != 0) {
-					
-		if(acceptAndRecData(&sd, &sd_current, &pin, &addrlen, buf)) {
-			pid = fork();
-		}
+				
+		pid = fork();
 		
-		if(pid == 0) {
-			if(!fork()) {
-				close(sd);
-				printf("pid: %d\n", getpid());
-				response = handleBuf(buf); // Call function to handle a response
-	
-				// Send a response to the client
-				if(send(sd_current, response, strlen(response) + 1, 0) == -1) { // Send a response to client, if it does not work, show error.
-					perror("send");
-					exit(-1);
-				}
-				
-				close(sd_current);
-			}
-			else
-				exit(0);
-		}
-		else	
-			waitpid(pid, &status, 0);	
-	}
-	/*
-	if(pid == 0) {
-		if(!fork()) {
-			close(sd);
+		switch(pid) {
+		case -1: // Error forking
+			perror("fork");
+			exit(-1);
+			break;
 
-			response = handleBuf(buf); // Call function to handle a response
-	
-			// Send a response to the client
-			if(send(sd_current, response, strlen(response) + 1, 0) == -1) { // Send a response to client, if it does not work, show error.
-				perror("send");
-				exit(-1);
+		case 0: // Child
+			if(acceptAndRecData(&sd, &sd_current, &pin, &addrlen, buf)) {
+				if(!fork()) { // Child
+					sleep(1);
+					response = handleBuf(buf);
+					if(send(sd_current, response, strlen(response) + 1, 0) == -1){
+						perror("send");
+						close(sd_current);
+						exit(-1);
+					}
+					close(sd_current);
+				}
+				exit(0);
 			}
-				
-			close(sd_current);
+			break;
+		default: // Parent
+			waitpid(pid, &status, 0);
 		}
-		else
-			exit(0);
-	}*/
+	}
 			
 	exit(0);	
 }
