@@ -1,4 +1,7 @@
 
+// DV1467 Lab assignment 2
+// Authors: Peter Aoun & Per Sandgren
+
 #include<stdio.h>
 #include<stdlib.h>
 #include<stddef.h>
@@ -12,13 +15,13 @@
 #include<unistd.h>
 #include<time.h>
 #include<limits.h>
-#include<signal.h>
 
 #define DEFAULT_PORT 80
 #define BUFSIZE 512
 #define MAX_PORTS 65535
 #define BACKLOG 10
 
+// Function that handles the parameters
 void parameterHandling(int nrOfArgs, int* port, char* args[]) { // Function to handle input parameters
 	
 	char *invalidUsage = "Invalid usage!\n";
@@ -61,7 +64,8 @@ void parameterHandling(int nrOfArgs, int* port, char* args[]) { // Function to h
 	}
 }
 
-void setUp(int *sd, const int port, struct sockaddr_in *sin) { // Function to set up sockets
+// Function that sets up the socket
+void setUp(int *sd, const int port, struct sockaddr_in *sin) { 
 	// Fix socket
 	// sd = socket descriptor
 	// socket(DOMAIN, TYPE, PROTOCOL)
@@ -92,7 +96,8 @@ void setUp(int *sd, const int port, struct sockaddr_in *sin) { // Function to se
 	}
 }
 
-int acceptAndRecData(int *sd, int *sd_current, struct sockaddr_in *pin, int *addrlen, char buf[BUFSIZE]) { // Function to accept and recieve data
+// Function to accept and recieve data
+int acceptAndRecData(int *sd, int *sd_current, struct sockaddr_in *pin, int *addrlen, char buf[BUFSIZE]) { 
 	// Wait for client to send us an request
 	// Get new socket file descriptor to use for this single connection
 	// pin = space where information about where the connection is comming from
@@ -126,29 +131,41 @@ char* getDate() { // Function to return date
 	char *response;
 	char *dateText = "Date: ";
 	
-	currentTime = time(NULL); // Set time to NULL, in case of time not found
+	currentTime = time(NULL); // Set time to NULL, in case of time not found it will return -1
 	
-	if(currentTime != ((time_t)-1))
-		timeStr = ctime(&currentTime); // ***
+
+	if(currentTime != ((time_t)-1)) {
+		timeStr = ctime(&currentTime); // Convert time to string
+	}
 	
 	response = calloc(strlen(dateText) + strlen(timeStr) + 1, sizeof(char)); // Make space in memory for response
-	strcpy(response, dateText); // Set date and time in response string
-	strcat(response, timeStr);	
 
+	strcpy(response, dateText); // Set date and time in response string
+	strcat(response, timeStr);
+
+	// Add \r\n to the end
+	response[strlen(response) - 1] = '\r';
+	response[strlen(response)] = '\n';
+	
 	return response;
 }
 
 char* getFileLastModified(char *path) { // Function to return last date and time for file modified
 	char *response;
 	char *lastResponseText = "Last-Modified: ";
-	char *temp = "File not found!\n";
+	char *temp = "File not found!";
 	struct stat attr;
-	if(stat(path, &attr) == 0) // ***
-		temp = ctime(&attr.st_mtime);
+
+	if(stat(path, &attr) == 0) // Check that the file was found
+		temp = ctime(&attr.st_mtime); // Set the last modified date and time to temp
 	
 	response = calloc(strlen(lastResponseText) + strlen(temp) + 1, sizeof(char)); // Make space in memory for response
-	strcpy(response, lastResponseText); // Set two char arrays into one char array.
+	strcpy(response, lastResponseText);
 	strcat(response, temp);	
+	
+	// Add \r\n to the end
+	response[strlen(response) - 1] = '\r';
+	response[strlen(response)] = '\n';
 	
 	return response;
 }
@@ -157,16 +174,16 @@ char* handleRequest(char *requestType, char* file) { // Function to handle GET c
 	
 	// Variables used in the response
 	char *protocol = "HTTP/1.0 ";
-	char *responseCode = "400 Bad Request\n";
+	char *responseCode = "400 Bad Request\r\n";
 	char *time = getDate();
-	char *server = "Server: runs something\n"; //!!!!
+	char *server = "Server: Ubuntu 16.04\r\n"; //!!!!
 	char *lastModified = "TEMP"; //!!!!
-	char *eTag = "ETag: rand12345num\n"; //!!!!
-	char *acceptRanges = "Accept-Ranges: bytes\n";
-	char *contentLengthStart = "Content-Length: %d\n";
+	char *eTag = "ETag: rand12345num\r\n"; //!!!!
+	char *acceptRanges = "Accept-Ranges: bytes\r\n";
+	char *contentLengthStart = "Content-Length: %d\r\n";
 	char *contentLength;
-	char *connection = "Connection: close\n";
-	char *contentType = "Content-Type: text/html\n";
+	char *connection = "Connection: close\r\n";
+	char *contentType = "Content-Type: text/html\r\n";
         char *response;
 	
 	char *page;
@@ -175,42 +192,60 @@ char* handleRequest(char *requestType, char* file) { // Function to handle GET c
 	FILE *fp = NULL;
 	size_t fileSize = 0;
 	char *pathToRequestedFile;
-	char *fileName = calloc(strlen(file), sizeof(char));
-	
-	realpath(file, fileName); // Check for .. or .
+	char *fileName;
 
-	if(strcmp(fileName, "/")==0)
-		fileName = "index.html";
-	else if(fileName[0] = '/')
-		fileName++;
-
-	
-	pathToRequestedFile = calloc(strlen(pathToWWW) + strlen(fileName) + 1, sizeof(char)); // Make space in memory for file path string
-	strcpy(pathToRequestedFile, pathToWWW); // Set two char arrays into one, filepath+filename
-	strcat(pathToRequestedFile, fileName);
-	
-	if(strcmp(requestType, "HEAD") == 0 || strcmp(requestType, "GET") == 0) {
-		//printf("open file in path: %s\n", pathToRequestedFile);
-		fp = fopen(pathToRequestedFile, "r"); // Open file from recieved path and filename string
+	// Check if the request type is too long
+	if(strlen(requestType) > 5) {
+		fp = fopen("../www/error400.html", "r");
+		lastModified = getFileLastModified("../www/error400.html"); // Set value for last modified with function	
+	} // Check if the requested file name is too long 
+	else if(strlen(file) > 50) {
+		fp = fopen("../www/error403.html", "r");
+		responseCode = "403 Forbidden\n";
+		lastModified = getFileLastModified("../www/error403.html"); // Set value for last modified with function	
+	} // Check if the request type is HEAD or GET
+	else if(strcmp(requestType, "HEAD") == 0 || strcmp(requestType, "GET") == 0) {
 		
-		responseCode = "200 OK\n";
+		fileName = calloc(strlen(file), sizeof(char));
+
+		realpath(file, fileName); // Remove .. and ./ in the filename
 	
+		// If file name is only a /, set it to index.html
+		if(strcmp(fileName, "/")==0)
+			fileName = "index.html";
+		else if(fileName[0] = '/') // If the file name starts with a /, move the pointer forward
+			fileName++;
+
+		pathToRequestedFile = calloc(strlen(pathToWWW) + strlen(fileName) + 1, sizeof(char)); // Make space in memory for file path string
+		strcpy(pathToRequestedFile, pathToWWW); // Set two char arrays into one, filepath+filename
+		strcat(pathToRequestedFile, fileName);
+
+		fp = fopen(pathToRequestedFile, "r"); // Open file from recieved path and filename string	
+		responseCode = "200 OK\n";
+		lastModified = getFileLastModified(pathToRequestedFile); // Set value for last modified with function	
+		
+		// Check if file not found
 		if(fp == NULL) { 
 			fp = fopen("../www/error404.html", "r");	
 			responseCode = "404 Not Found\n";
+			lastModified = getFileLastModified("../www/error404.html"); // Set value for last modified with function	
 		}
-	}
-	else {
-		fp = fopen("../www/error400.html", "r");
+	} // Request type not implemented
+	else { 
+		fp = fopen("../www/error501.html", "r");
+		responseCode = "501 Not Implemented\n";
+		lastModified = getFileLastModified("../www/error501.html"); // Set value for last modified with function	
 	}	
 
+	// If file could not be open
 	if(fp == NULL) { 
 		fp = fopen("../www/error500.html", "r");	
 		responseCode = "500 Internal Server Error\n";
+		lastModified = getFileLastModified("../www/error500.html"); // Set value for last modified with function
 	}
 
+	// Get file content if a file was abled to be opened
 	if(fp != NULL) {
-		
 		fseek(fp, 0, SEEK_END);
 		fileSize = ftell(fp); // Set filesize to size of opened file
 		
@@ -222,48 +257,47 @@ char* handleRequest(char *requestType, char* file) { // Function to handle GET c
 
 		fclose(fp); // Close opened file
 	}
-	else {
+	else { // No file could be opened
 		page = "<html><head>Internal server error 500</head><body><h1>Internal server error 500</h1></body></html>";
 		responseCode = "500 Internal Server Error\n";
 	}
 	
+	// Only get HEAD part of html file 
 	if(strcmp(requestType, "HEAD") == 0) {	
-		// Get p1 to the start of head and p2 to the end of head
+		// Get p1 to the start of head part and p2 to the end of head part
 		char *head = NULL;
 		char *p1 = strstr(page, "<head>");
 		if(p1 == NULL)
 			p1 = strstr(page, "<HEAD>");
-			
-		char *p2 = strstr(page, "</head>") + 7;
+	
+		char *p2 = strstr(page, "</head>");
 		if(p2 == NULL)
-			p2 = strstr(page, "</HEAD>" + 7);
+			p2 = strstr(page, "</HEAD>");
+		p2 += 7;
 
 		if(p1 == NULL || p2 == NULL) { // No head found
 			page = calloc(strlen("<head>No head found</head>"), sizeof(char));
 			page = "<head>No head found</head>";
 		}
 		else {
-			// Get the content in head
+			// Get the content in head and save it in page
 			size_t headLength = p2 - p1;
 
 			head = calloc(headLength + 1, sizeof(char));
 			strncpy(head, p1, headLength);
 			head[headLength] = '\0';
-
+			
 			page = calloc(strlen(head), sizeof(char));
 			page = head;
 		}
-
-		printf("head: %s", head);
 	}
-	// WHEN LOOPS ARE DONE, HEAD SHOULD BE FULL.
-
-	lastModified = getFileLastModified(pathToRequestedFile); // Set value for last modified with function
 	
+	// Calculate content length
 	int pageSize = strlen(page);
 	contentLength = calloc(strlen(contentLengthStart) + sizeof(pageSize) + 1, sizeof(char));
 	sprintf(contentLength, contentLengthStart, pageSize);
 
+	// Allocate memory for the response memory
 	response = calloc(	strlen(protocol) +
 				strlen(responseCode) + 
 				strlen(time) +
@@ -274,11 +308,12 @@ char* handleRequest(char *requestType, char* file) { // Function to handle GET c
 				strlen(contentLength) +
 				strlen(connection) + 
 				strlen(contentType) +
-				strlen("\n") +
+				strlen("\r\n") +
 				strlen(page) +
 				1, 
-				sizeof(char)); // Allocate space in memory for a response to send back
+				sizeof(char));
 
+	// Copy and concatenate all the variables into response
 	strcpy(response, protocol);
 	strcat(response, responseCode);
 	strcat(response, time);
@@ -289,17 +324,20 @@ char* handleRequest(char *requestType, char* file) { // Function to handle GET c
 	strcat(response, contentLength);
 	strcat(response, connection);
 	strcat(response, contentType);
-	strcat(response, "\n");
+	strcat(response, "\r\n");
 	strcat(response, page); // Set all different parts of the response to one char array
 		
 	return response;
 }
 
 char* handleBuf(char buf[BUFSIZE]) { // Function to handle recieved data
+
+	//printf("Request: %s\n", buf);
 	
 	char *temp = calloc(strlen(buf) + 1, sizeof(char));
 	strcpy(temp, buf);
 	
+	// Get request type and requested file name
 	const char *delim = " \0";
 	char *requestType = strtok(temp, delim);	
 	char *fileName = strtok(NULL, delim);
@@ -332,7 +370,7 @@ int main(int argc, char* argv[]) {
 		buf[i] = '\0';
 	}
 
-	// Figure out where to fork what, suggestion, fork in start of while
+	// Main server loop
 	while(pid != 0) {
 		
 		pid = fork();
@@ -342,25 +380,31 @@ int main(int argc, char* argv[]) {
 			exit(-1);
 			break;
 
-		case 0: // Child
+		case 0: // Child that will create another child
 			if(acceptAndRecData(&sd, &sd_current, &pin, &addrlen, buf)) {
-				if(!fork()) { // Child
-					sleep(1);
-					response = handleBuf(buf);
+				if(!fork()) { // Child that handles the response
+					sleep(1); // Sleep to be adopted by init when parent die
+					
+					response = handleBuf(buf); // Get response message
+					
+					// Send response message
 					if(send(sd_current, response, strlen(response) + 1, 0) == -1){
 						perror("send");
 						close(sd_current);
 						exit(-1);
 					}
-					close(sd_current);
+
+					close(sd_current); // Close socket
 				}
 				exit(0);
 			}
 			break;
-		default: // Parent
+		default: // Parent waiting for the child to create another child and die
 			waitpid(pid, &status, 0);
 		}
 	}
-			
+
+	// Close socket and exit if the parent escapes somehow
+	close(sd);	
 	exit(0);	
 }
