@@ -113,8 +113,8 @@ int acceptAndRecData(int *sd, int *sd_current, struct sockaddr_in *pin, int *add
 	}
 
 	// Show info about the client
-	printf("Request from %s:%i\n", inet_ntoa((*pin).sin_addr), ntohs((*pin).sin_port));
-	printf("Request: %s", buf);
+	//printf("Request from %s:%i\n", inet_ntoa((*pin).sin_addr), ntohs((*pin).sin_port));
+	//printf("Request: %s", buf);
 
 	return 1;
 }
@@ -192,7 +192,7 @@ char* handleRequest(char *requestType, char* file) { // Function to handle GET c
 	strcat(pathToRequestedFile, fileName);
 	
 	if(strcmp(requestType, "HEAD") == 0 || strcmp(requestType, "GET") == 0) {
-		printf("open file in path: %s\n", pathToRequestedFile);
+		//printf("open file in path: %s\n", pathToRequestedFile);
 		fp = fopen(pathToRequestedFile, "r"); // Open file from recieved path and filename string
 		
 		responseCode = "200 OK\n";
@@ -239,7 +239,7 @@ char* handleRequest(char *requestType, char* file) { // Function to handle GET c
 	int headFound2 = 0; // For exiting head
 
 	// MAKE THE HEAD-VAR TO RECIEVE HEAD
-	head = calloc(strlen(page) + 1); // Make room for head
+	head = calloc(strlen(page) + 1, sizeof(char)); // Make room for head
 	strcpy(head, beginHeadPage); // Insert start of header
 
 	// Iterate through the headfile AND FILL IT UP
@@ -249,24 +249,26 @@ char* handleRequest(char *requestType, char* file) { // Function to handle GET c
 		
 		headPage = strtok(NULL, delimPage); // Move on to next token
 
-		if(strcmp(headPage, NULL) == 0){ // If no head found, exit
+		if(headPage == NULL){ // If no head found, exit
 			head = "<html><head>No head file found</html></head>";
 			headFound1 = -1;
 			headFound2 = -1;
-			}	
+		}	
 	}
 	while(headFound2 == 0){
 		headPage = strtok(NULL, delimPage); // Move on to next token
 		
 		if(strcmp(headPage, "head") == 0 || strcmp(headPage, "HEAD") == 0) // If head-token found, head content has ended.
 			headFound2 = 1; // Exit while-loop
-		else if(strcmp(headPage, NULL) == 0){ // If no head found, exit
+		else if(headPage == NULL){ // If no head found, exit
 			head = "<html><head>No head file found</html></head>";
 			headFound2 = -1;
-			}
+		}
 		else
 			strcat(head, headPage); // Add head-content to head
 	}
+	
+	printf("headPage: %s", headPage);
 
 	// WHEN LOOPS ARE DONE, HEAD SHOULD BE FULL.
 
@@ -317,7 +319,7 @@ char* handleBuf(char buf[BUFSIZE]) { // Function to handle recieved data
 	char *fileName = strtok(NULL, delim);
 	char *response = handleRequest(requestType, fileName);
 
-	printf("Response message:\n%s\n", response);
+	//printf("Response message:\n%s\n", response);
 
 	return response;
 }
@@ -333,12 +335,6 @@ int main(int argc, char* argv[]) {
 	int pid = getpid();	
 	int status;
 
-	
-/*	struct sigaction sigchld_action = {
-		.sa_handler = SIG_DFL,
-		.sa_flags = SA_NOCLDWAIT
-	};
-	sigaction(SIGCHLD, &sigchld_action, NULL);*/
 
 	parameterHandling(argc, &port, argv); // Call function to handle parameters entered when starting the webserver
 
@@ -352,54 +348,33 @@ int main(int argc, char* argv[]) {
 
 	// Figure out where to fork what, suggestion, fork in start of while
 	while(pid != 0) {
-					
-		if(acceptAndRecData(&sd, &sd_current, &pin, &addrlen, buf)) {
-			pid = fork();
-		}
-	}	
 		
-		if(pid == 0) {
-			if(!fork()) {
-				close(sd);
-				printf("pid: %d\n", getpid());
-				response = handleBuf(buf); // Call function to handle a response
-	
-				// Send a response to the client
-				if(send(sd_current, response, strlen(response) + 1, 0) == -1) { // Send a response to client, if it does not work, show error.
-					perror("send");
-					exit(-1);
-				}
-				
-				close(sd_current);
-			}
-			else
-				exit(0);
-		}
-		else	
-			waitpid(pid, &status, 0);	
-	}
-	
-	// Close current socket
-	close(sd_current); // Close current socket
-	/*
-	if(pid == 0) {
-		if(!fork()) {
-			close(sd);
+		pid = fork();
+		switch(pid) {
+		case -1: // Error forking
+			perror("fork");
+			exit(-1);
+			break;
 
-			response = handleBuf(buf); // Call function to handle a response
->>>>>>> af4cfb3cf47be19a72dae9b7de870465506647b0
-	
-			// Send a response to the client
-			if(send(sd_current, response, strlen(response) + 1, 0) == -1) { // Send a response to client, if it does not work, show error.
-				perror("send");
-				exit(-1);
+		case 0: // Child
+			if(acceptAndRecData(&sd, &sd_current, &pin, &addrlen, buf)) {
+				if(!fork()) { // Child
+					sleep(1);
+					response = handleBuf(buf);
+					if(send(sd_current, response, strlen(response) + 1, 0) == -1){
+						perror("send");
+						close(sd_current);
+						exit(-1);
+					}
+					close(sd_current);
+				}
+				exit(0);
 			}
-				
-			close(sd_current);
+			break;
+		default: // Parent
+			waitpid(pid, &status, 0);
 		}
-		else
-			exit(0);
-	}*/
+	}
 			
 	exit(0);	
 }
