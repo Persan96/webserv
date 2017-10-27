@@ -334,6 +334,14 @@ char* handleBuf(char buf[BUFSIZE]) { // Function to handle recieved data
 
 	//printf("Request: %s\n", buf);
 	
+	int found = 0;
+	for(int i = 0; i < BUFSIZE && found == 0; i++){
+		if(buf[i] == '\r'){
+			buf[i] = ' ';
+			found = 1;
+		}
+	}
+
 	char *temp = calloc(strlen(buf) + 1, sizeof(char));
 	strcpy(temp, buf);
 	
